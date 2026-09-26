@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@xyflow/react/dist/style.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -131,4 +132,69 @@ body {
   html {
     @apply font-sans;
   }
+}
+
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: 0 4px 12px oklch(0 0 0 / 20%);
+}
+
+.react-flow__controls-button {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  fill: currentColor;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: 0;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--accent);
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor;
+}
+
+.react-flow {
+  background: var(--background);
+}
+
+.react-flow__node {
+  min-width: 160px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: 0 4px 12px oklch(0 0 0 / 18%);
+  font-size: 0.875rem;
+}
+
+.react-flow__node.selected {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px var(--ring), 0 4px 12px oklch(0 0 0 / 18%);
+}
+
+.react-flow__handle {
+  border: 2px solid var(--background);
+  background: var(--primary);
+}
+
+.react-flow__edge-path {
+  stroke: var(--primary) !important;
+  transition: none;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--foreground) !important;
+}
+
+.react-flow__connection-path {
+  stroke: var(--primary) !important;
 }
