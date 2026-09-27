@@ -1,7 +1,10 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useClerk, useUser } from "@clerk/nextjs"
-import { ChevronUp, LogIn, User } from "lucide-react"
+import { ChevronUp, LogIn, Sparkles, User } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
 
 import {
   Sidebar,
@@ -28,6 +31,17 @@ export function AppSidebar() {
   const displayName = user?.fullName || user?.username || "Your account"
   const email = user?.primaryEmailAddress?.emailAddress || ""
   const initials = displayName.slice(0, 2).toUpperCase()
+  const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false)
+
+  useEffect(() => {
+    function updateGenerating(event: Event) {
+      setIsGeneratingSuggestions(Boolean((event as CustomEvent<{ generating?: boolean }>).detail?.generating))
+    }
+
+    window.addEventListener("graph:generating-suggestions", updateGenerating)
+    window.dispatchEvent(new CustomEvent("graph:request-generating"))
+    return () => window.removeEventListener("graph:generating-suggestions", updateGenerating)
+  }, [])
 
   return (
     <Sidebar collapsible="icon">
@@ -51,6 +65,20 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
+        <div className="px-2 pb-1 group-data-[collapsible=icon]:hidden">
+          <Button
+            className="w-full"
+            disabled={isGeneratingSuggestions}
+            onClick={() => {
+              setIsGeneratingSuggestions(true)
+              window.dispatchEvent(new CustomEvent("graph:generate-suggestions"))
+            }}
+            size="sm"
+          >
+            <Sparkles data-icon="inline-start" />
+            {isGeneratingSuggestions ? "Generating..." : "Generate Suggestions"}
+          </Button>
+        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>

@@ -1,13 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BookOpen, BriefcaseBusiness, ChevronRight, Folder, Pencil, Plus, RotateCcw, Target, Trash2 } from "lucide-react"
+import { BookOpen, BriefcaseBusiness, ChevronRight, Folder, Pencil, Plus, RotateCcw, Sparkles, Target, Trash2 } from "lucide-react"
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 type ExplorerNode = {
   id: string
-  kind: "experience" | "goal" | "class"
+  kind: "experience" | "profile" | "class" | "suggestion"
   name: string
 }
 
@@ -32,7 +32,7 @@ function requestReset() {
 
 export function GraphExplorer() {
   const [nodes, setNodes] = useState<ExplorerNode[]>([])
-  const [expandedFolders, setExpandedFolders] = useState({ experiences: false, classes: false })
+  const [expandedFolders, setExpandedFolders] = useState({ experiences: false, classes: false, suggestions: false })
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null)
 
   useEffect(() => {
@@ -59,16 +59,23 @@ export function GraphExplorer() {
     }
   }, [])
 
-  const goals = nodes.filter((node) => node.kind === "goal")
+  const profile = nodes.filter((node) => node.kind === "profile")
   const experiences = nodes.filter((node) => node.kind === "experience")
   const classes = nodes.filter((node) => node.kind === "class")
+  const suggestions = nodes.filter((node) => node.kind === "suggestion")
 
-  function toggleFolder(folder: "experiences" | "classes") {
+  function toggleFolder(folder: "experiences" | "classes" | "suggestions") {
     setExpandedFolders((current) => ({ ...current, [folder]: !current[folder] }))
   }
 
   function renderNode(node: ExplorerNode, paddingClass: string, showIcon = true) {
-    const Icon = node.kind === "experience" ? BriefcaseBusiness : node.kind === "goal" ? Target : BookOpen
+    const Icon = node.kind === "experience"
+      ? BriefcaseBusiness
+      : node.kind === "profile"
+        ? Target
+        : node.kind === "suggestion"
+          ? Sparkles
+          : BookOpen
     return (
       <div
         className={`flex min-w-0 items-center gap-2 rounded-md py-1.5 pr-1 ${paddingClass} text-sm hover:bg-sidebar-accent hover:text-sidebar-accent-foreground`}
@@ -86,7 +93,7 @@ export function GraphExplorer() {
   }
 
   function renderFolder(
-    id: "experiences" | "classes",
+    id: "experiences" | "classes" | "suggestions",
     label: string,
     items: ExplorerNode[],
     FolderIcon: typeof Folder,
@@ -155,9 +162,10 @@ export function GraphExplorer() {
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2">
-        {goals.map((node) => renderNode(node, "pl-2"))}
+        {profile.map((node) => renderNode(node, "pl-2"))}
         {renderFolder("experiences", "Experiences", experiences, BriefcaseBusiness)}
         {renderFolder("classes", "Classes", classes, BookOpen)}
+        {renderFolder("suggestions", "Suggestions", suggestions, Sparkles)}
       </div>
       {contextMenu && (
         <div
@@ -178,7 +186,7 @@ export function GraphExplorer() {
           </button>
           <button
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10 disabled:pointer-events-none disabled:opacity-50"
-            disabled={contextMenu.node.kind === "goal"}
+            disabled={contextMenu.node.kind === "profile"}
             onClick={() => {
               requestDeleteNode(contextMenu.node.id)
               setContextMenu(null)
