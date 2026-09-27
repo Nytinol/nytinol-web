@@ -73,6 +73,7 @@ type UserData = {
   age: string
   major: string
   gpa: string
+  onEdit?: () => void
 }
 
 type ExperienceNode = Node<ExperienceData, "experience">
@@ -510,20 +511,35 @@ function UserNodeCard({ data }: NodeProps<UserNode>) {
     event.stopPropagation()
   }
 
+  const profileName = data.name.trim() && data.name !== "Your name"
+    ? data.name
+    : displayName
+
   return (
     <Card size="sm" className="relative min-w-64 overflow-visible border-0 py-0 shadow-sm ring-border">
       <Handle className="z-10" style={{ left: "-1px", width: "7px", height: "7px" }} type="target" position={Position.Left} />
       <Handle className="z-10" style={{ right: "-1px", width: "7px", height: "7px" }} type="source" position={Position.Right} />
+      <Button
+        aria-label="Edit profile"
+        className="nodrag absolute top-2 right-2 z-10 size-6 rounded-md p-0"
+        onClick={(event) => { event.stopPropagation(); data.onEdit?.() }}
+        onPointerDown={stopNodePointer}
+        size="icon-xs"
+        title="Edit profile"
+        variant="secondary"
+      >
+        <Pencil />
+      </Button>
       <CardHeader className="gap-3 px-3 py-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 pr-8">
           <div
-            aria-label={`${displayName} profile`}
+            aria-label={`${profileName} profile`}
             className="size-12 shrink-0 rounded-full object-cover ring-2 ring-background"
             role="img"
             style={{ backgroundImage: `url(${user?.imageUrl || data.profileImageUrl})`, backgroundPosition: "center", backgroundSize: "cover" }}
           />
           <div className="min-w-0">
-            <CardTitle className="truncate text-sm">{displayName}</CardTitle>
+            <CardTitle className="truncate text-sm">{profileName}</CardTitle>
             <CardDescription className="truncate text-xs">{data.major}</CardDescription>
           </div>
         </div>
@@ -790,6 +806,7 @@ export default function GraphPage() {
       ...node,
       data: {
         ...node.data,
+        onEdit: () => openNodeEditor(node),
       },
     }
   })
@@ -829,11 +846,8 @@ export default function GraphPage() {
               Update the information shown on this node.
             </DialogDescription>
           </DialogHeader>
-          {editingNode?.type === "user" && draft && "name" in draft ? (
+          {editingNode?.type === "user" && draft && "gpa" in draft ? (
             <div className="grid gap-4">
-              <FormField label="Name">
-                <Input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} />
-              </FormField>
               <FormField label="Age">
                 <Input type="number" min="0" value={draft.age} onChange={(event) => updateDraft("age", event.target.value)} />
               </FormField>
