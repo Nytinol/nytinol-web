@@ -1,8 +1,8 @@
 "use client"
 
-import { ChevronDown, Pencil, Trash2 } from "lucide-react"
+import { ChevronDown, Info, Pencil, Target, Trash2 } from "lucide-react"
 import { useUser } from "@clerk/nextjs"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   addEdge,
   applyEdgeChanges,
@@ -73,17 +73,82 @@ type UserData = {
   age: string
   major: string
   gpa: string
+  jobTitle: string
+  industry: string
+  annualSalary: string
+  onEdit?: () => void
+}
+
+type SuggestionKind = "experience" | "class"
+
+type SuggestionData = {
+  type: "suggestion"
+  kind: SuggestionKind
+  actionType: string
+  position: string
+  industry: string
+  targetTerm: string
+  feasibility: number
+  goalAlignment: number
+  why: string[]
+  skillsAdded: string[]
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
 type ExperienceNode = Node<ExperienceData, "experience">
 type GoalNode = Node<GoalData, "goal">
 type ClassNode = Node<ClassData, "class">
 type UserNode = Node<UserData, "user">
-type AppNode = ExperienceNode | GoalNode | ClassNode | UserNode
-type AppData = ExperienceData | GoalData | ClassData | UserData
-type ExplorerNode = { id: string; kind: "experience" | "goal" | "class"; name: string }
+type SuggestionNode = Node<SuggestionData, "suggestion">
+type AppNode = ExperienceNode | GoalNode | ClassNode | UserNode | SuggestionNode
+type AppData = ExperienceData | GoalData | ClassData | UserData | SuggestionData
+type ExplorerNode = { id: string; kind: "experience" | "profile" | "class" | "suggestion"; name: string }
 
 const GRAPH_STORAGE_KEY = "nytinol-graph-data"
+const PLAN_API_URL = "/api/plan"
+const PLAN_FETCH_TIMEOUT_MS = 120_000
+
+type PlanExperience = {
+  experience_type: string
+  experience_name: string
+  industry: string
+  term: string
+  role_level: string
+  outcome: string
+  is_paid: boolean
+}
+
+type PlanPayload = {
+  major: string
+  track: string
+  gpa: number
+  credits_earned: number
+  classes: string[]
+  experiences: PlanExperience[]
+  job_title: string
+  industry: string
+  salary: number
+  current_term: string
+  entry_term: string
+  entry_type: string
+  work_hours: number
+  campus_id: string
+  width: number
+  depth: number
+}
+
+type PlanRecommendation = {
+  actionType: string
+  position: string
+  industry: string
+  targetTerm: string
+  feasibility: number
+  goalAlignment: number
+  why: string[]
+  skillsAdded: string[]
+  nextSteps: PlanRecommendation[]
+}
 
 const seasons = ["Spring", "Summer", "Fall", "Winter"]
 
@@ -96,149 +161,59 @@ const initialNodes: AppNode[] = [
   {
     id: "experience-1",
     type: "experience",
-    position: { x: -1350, y: -200 },
+    position: { x: -1080, y: -200 },
     data: {
       type: "experience",
-      experienceType: "Internship",
-      experienceName: "Circuit Design Intern",
-      organization: "NVIDIA",
-      industry: "IC Design",
-      term: "Fall 2026",
-      termsParticipated: "1",
+      experienceType: "Experience",
+      experienceName: "Undergraduate teaching assistant",
+      organization: "Computer Science Department",
+      industry: "Software Engineering",
+      term: "Fall 2025",
+      termsParticipated: "2",
       hoursPerWeek: "10",
     },
   },
   {
     id: "experience-2",
     type: "experience",
-    position: { x: -1080, y: -200 },
+    position: { x: -810, y: -200 },
     data: {
       type: "experience",
-      experienceType: "Experience",
-      experienceName: "Software engineering intern",
-      organization: "Civic technology lab",
-      industry: "Software Engineering",
-      term: "Fall 2026",
+      experienceType: "Research",
+      experienceName: "Undergraduate research assistant",
+      organization: "Systems and Security Lab",
+      industry: "Computer Systems",
+      term: "Spring 2026",
       termsParticipated: "1",
-      hoursPerWeek: "10",
+      hoursPerWeek: "8",
     },
   },
   {
     id: "experience-3",
     type: "experience",
-    position: { x: -810, y: -200 },
+    position: { x: -540, y: -200 },
     data: {
       type: "experience",
-      experienceType: "Experience",
-      experienceName: "Web application developer",
-      organization: "Campus services team",
-      industry: "Information Systems",
-      term: "Spring 2027",
+      experienceType: "Internship",
+      experienceName: "Software engineering intern",
+      organization: "Capital One",
+      industry: "Software Engineering",
+      term: "Summer 2026",
       termsParticipated: "1",
-      hoursPerWeek: "12",
+      hoursPerWeek: "40",
     },
   },
   {
     id: "experience-4",
     type: "experience",
-    position: { x: -540, y: -200 },
-    data: {
-      type: "experience",
-      experienceType: "Research",
-      experienceName: "Data engineering assistant",
-      organization: "Institutional research office",
-      industry: "Data Engineering",
-      term: "Fall 2027",
-      termsParticipated: "1",
-      hoursPerWeek: "8",
-    },
-  },
-  {
-    id: "experience-5",
-    type: "experience",
     position: { x: -270, y: -200 },
     data: {
       type: "experience",
-      experienceType: "Internship",
-      experienceName: "Cybersecurity analyst intern",
-      organization: "Regional security operations center",
-      industry: "Cybersecurity",
-      term: "Summer 2027",
-      termsParticipated: "1",
-      hoursPerWeek: "20",
-    },
-  },
-  {
-    id: "experience-6",
-    type: "experience",
-    position: { x: -1350, y: -100 },
-    data: {
-      type: "experience",
       experienceType: "Project",
-      experienceName: "Cloud systems automation fellow",
-      organization: "Research computing group",
-      industry: "Cloud Infrastructure",
-      term: "Fall 2027",
-      termsParticipated: "1",
-      hoursPerWeek: "10",
-    },
-  },
-  {
-    id: "experience-7",
-    type: "experience",
-    position: { x: -1080, y: -100 },
-    data: {
-      type: "experience",
-      experienceType: "Experience",
-      experienceName: "Technology product apprentice",
-      organization: "Student innovation studio",
-      industry: "Product Management",
-      term: "Spring 2027",
-      termsParticipated: "1",
-      hoursPerWeek: "8",
-    },
-  },
-  {
-    id: "experience-8",
-    type: "experience",
-    position: { x: -810, y: -100 },
-    data: {
-      type: "experience",
-      experienceType: "Research",
-      experienceName: "Systems design research assistant",
-      organization: "Digital services research lab",
-      industry: "Systems Analysis",
-      term: "Fall 2027",
-      termsParticipated: "1",
-      hoursPerWeek: "6",
-    },
-  },
-  {
-    id: "experience-9",
-    type: "experience",
-    position: { x: -540, y: -100 },
-    data: {
-      type: "experience",
-      experienceType: "Project",
-      experienceName: "Healthcare interoperability project",
-      organization: "Community health network",
-      industry: "Health Information Systems",
-      term: "Spring 2028",
-      termsParticipated: "1",
-      hoursPerWeek: "10",
-    },
-  },
-  {
-    id: "experience-10",
-    type: "experience",
-    position: { x: -270, y: -100 },
-    data: {
-      type: "experience",
-      experienceType: "Experience",
-      experienceName: "Open-source quality contributor",
-      organization: "Open software foundation",
-      industry: "Software Quality",
-      term: "Summer 2027",
+      experienceName: "ACM club web platform",
+      organization: "Association for Computing Machinery",
+      industry: "Web Development",
+      term: "Spring 2026",
       termsParticipated: "1",
       hoursPerWeek: "6",
     },
@@ -246,73 +221,85 @@ const initialNodes: AppNode[] = [
   {
     id: "class-1",
     type: "class",
-    position: { x: -1080, y: 100 },
+    position: { x: -1350, y: 100 },
     data: {
       type: "class",
-      className: "Foundations of Computer Science I",
+      className: "Computer Science I",
       subject: "CMSC 201",
-      term: "Fall 2026",
+      term: "Fall 2024",
       creditHours: "4",
     },
   },
   {
     id: "class-2",
     type: "class",
-    position: { x: -810, y: 100 },
+    position: { x: -1080, y: 100 },
     data: {
       type: "class",
-      className: "Foundations of Computer Science II",
+      className: "Computer Science II",
       subject: "CMSC 202",
-      term: "Spring 2027",
+      term: "Spring 2025",
       creditHours: "4",
     },
   },
   {
     id: "class-3",
     type: "class",
-    position: { x: -540, y: 100 },
+    position: { x: -810, y: 100 },
     data: {
       type: "class",
-      className: "Data Structures",
-      subject: "CMSC 341",
-      term: "Fall 2027",
-      creditHours: "4",
+      className: "Discrete Structures",
+      subject: "CMSC 203",
+      term: "Spring 2025",
+      creditHours: "3",
     },
   },
   {
     id: "class-4",
     type: "class",
-    position: { x: -270, y: 100 },
+    position: { x: -540, y: 100 },
     data: {
       type: "class",
-      className: "Web Application Architecture",
-      subject: "CMSC 426",
-      term: "Spring 2028",
+      className: "Computer Organization and Assembly Language",
+      subject: "CMSC 313",
+      term: "Fall 2025",
       creditHours: "3",
     },
   },
   {
     id: "class-5",
     type: "class",
-    position: { x: -1080-270, y: 100 },
+    position: { x: -270, y: 100 },
     data: {
       type: "class",
-      className: "Database Management Systems",
-      subject: "CMSC 461",
-      term: "Spring 2028",
+      className: "Data Structures",
+      subject: "CMSC 341",
+      term: "Fall 2025",
       creditHours: "3",
     },
   },
   {
-    id: "goal-1",
-    type: "goal",
-    deletable: false,
-    position: { x: -270, y: 0 },
+    id: "class-6",
+    type: "class",
+    position: { x: -1350, y: 240 },
     data: {
-      type: "goal",
-      industry: "Technology",
-      jobTitle: "Product designer",
-      annualSalary: "95000",
+      type: "class",
+      className: "Principles of Programming Languages",
+      subject: "CMSC 331",
+      term: "Spring 2026",
+      creditHours: "3",
+    },
+  },
+  {
+    id: "class-7",
+    type: "class",
+    position: { x: -1080, y: 240 },
+    data: {
+      type: "class",
+      className: "Computer Architecture",
+      subject: "CMSC 411",
+      term: "Spring 2026",
+      creditHours: "3",
     },
   },
   {
@@ -326,20 +313,15 @@ const initialNodes: AppNode[] = [
       name: "Your name",
       age: "20",
       major: "Computer Science",
-      gpa: "3.8",
+      gpa: "3.6",
+      jobTitle: "Solution Architect",
+      industry: "Information Technology",
+      annualSalary: "120000",
     },
   },
 ];
 
-const permanentGoalUserEdge: Edge = {
-  id: "goal-user-connection",
-  source: "goal-1",
-  target: "user-1",
-  deletable: false,
-}
-
 const initialEdges: Edge[] = [
-  permanentGoalUserEdge,
   ...initialNodes
     .filter((node) => node.type === "experience" || node.type === "class")
     .map((node) => ({
@@ -352,6 +334,236 @@ const initialEdges: Edge[] = [
 
 function cloneGraphData<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
+}
+
+function mergeGoalIntoUserGraph(nodes: AppNode[], edges: Edge[]): { nodes: AppNode[]; edges: Edge[] } {
+  const goal = nodes.find((node): node is GoalNode => node.type === "goal")
+  const user = nodes.find((node): node is UserNode => node.type === "user")
+  if (!user) return { nodes, edges }
+
+  const mergedUser: UserNode = {
+    ...user,
+    data: {
+      ...user.data,
+      jobTitle: user.data.jobTitle || goal?.data.jobTitle || "Software engineer",
+      industry: user.data.industry || goal?.data.industry || "Software Engineering",
+      annualSalary: user.data.annualSalary || goal?.data.annualSalary || "120000",
+    },
+  }
+
+  return {
+    nodes: nodes
+      .filter((node) => node.type !== "goal")
+      .map((node) => (node.id === mergedUser.id ? mergedUser : node)),
+    edges: edges.filter((edge) =>
+      edge.id !== "goal-user-connection" && edge.source !== "goal-1" && edge.target !== "goal-1"
+    ),
+  }
+}
+
+function parseNumericField(value: string | undefined, fallback = 0) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+function asString(value: unknown, fallback = "") {
+  return typeof value === "string" ? value : fallback
+}
+
+function asFiniteNumber(value: unknown, fallback = 0) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback
+}
+
+function asStringList(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+}
+
+function parseRecommendations(value: unknown): PlanRecommendation[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((item) => {
+    const rec = asRecord(item)
+    if (!rec) return []
+    return [{
+      actionType: asString(rec.action_type, "Experience"),
+      position: asString(rec.position, "Suggested next step"),
+      industry: asString(rec.industry),
+      targetTerm: asString(rec.target_term),
+      feasibility: asFiniteNumber(rec.feasibility),
+      goalAlignment: asFiniteNumber(rec.goal_alignment),
+      why: asStringList(rec.why),
+      skillsAdded: asStringList(rec.skills_added),
+      nextSteps: parseRecommendations(rec.next_steps),
+    }]
+  })
+}
+
+function parsePlanRecommendations(data: unknown) {
+  return parseRecommendations(asRecord(data)?.recommendations)
+}
+
+function suggestionKindFromRecommendation(actionType: string, position: string): SuggestionKind {
+  const haystack = `${actionType} ${position}`.toLowerCase()
+  if (/(class|course|credit)/.test(haystack) || /^[a-z]{2,5}\s*\d{3}/i.test(position)) {
+    return "class"
+  }
+  return "experience"
+}
+
+function formatPercent(value: number) {
+  const ratio = value > 1 ? value / 100 : value
+  return `${Math.round(ratio * 100)}%`
+}
+
+const SUGGESTION_COLUMN_GAP = 300
+const SUGGESTION_ROW_GAP = 132
+
+function measureSuggestionTree(recommendations: PlanRecommendation[]): number {
+  if (recommendations.length === 0) return 0
+  return recommendations.reduce((total, recommendation, index) => {
+    const childHeight = recommendation.nextSteps.length > 0
+      ? measureSuggestionTree(recommendation.nextSteps)
+      : SUGGESTION_ROW_GAP
+    return total + Math.max(SUGGESTION_ROW_GAP, childHeight) + (index > 0 ? 12 : 0)
+  }, 0)
+}
+
+function buildSuggestionGraph(
+  recommendations: PlanRecommendation[],
+  origin: { x: number; y: number },
+  parentId: string,
+  idFactory: { current: number },
+): { nodes: SuggestionNode[]; edges: Edge[] } {
+  const nodes: SuggestionNode[] = []
+  const edges: Edge[] = []
+  let cursorY = origin.y
+
+  for (const recommendation of recommendations) {
+    const subtreeHeight = Math.max(
+      SUGGESTION_ROW_GAP,
+      recommendation.nextSteps.length > 0 ? measureSuggestionTree(recommendation.nextSteps) : SUGGESTION_ROW_GAP,
+    )
+    const id = `suggestion-${idFactory.current++}`
+    nodes.push({
+      id,
+      type: "suggestion",
+      position: { x: origin.x, y: cursorY + subtreeHeight / 2 - SUGGESTION_ROW_GAP / 2 },
+      data: {
+        type: "suggestion",
+        kind: suggestionKindFromRecommendation(recommendation.actionType, recommendation.position),
+        actionType: recommendation.actionType,
+        position: recommendation.position,
+        industry: recommendation.industry,
+        targetTerm: recommendation.targetTerm,
+        feasibility: recommendation.feasibility,
+        goalAlignment: recommendation.goalAlignment,
+        why: recommendation.why,
+        skillsAdded: recommendation.skillsAdded,
+      },
+    })
+    edges.push({
+      id: `suggestion-edge-${parentId}-${id}`,
+      source: parentId,
+      target: id,
+      deletable: false,
+    })
+    if (recommendation.nextSteps.length > 0) {
+      const nested = buildSuggestionGraph(
+        recommendation.nextSteps,
+        { x: origin.x + SUGGESTION_COLUMN_GAP, y: cursorY },
+        id,
+        idFactory,
+      )
+      nodes.push(...nested.nodes)
+      edges.push(...nested.edges)
+    }
+    cursorY += subtreeHeight + 12
+  }
+
+  return { nodes, edges }
+}
+
+function buildPlanPayloadFromStoredGraph(): PlanPayload {
+  let graphNodes = initialNodes
+
+  try {
+    const storedGraph = localStorage.getItem(GRAPH_STORAGE_KEY)
+    if (storedGraph) {
+      const parsed = JSON.parse(storedGraph) as { nodes?: AppNode[] }
+      if (Array.isArray(parsed.nodes)) {
+        graphNodes = parsed.nodes
+      }
+    }
+  } catch {
+    graphNodes = initialNodes
+  }
+
+  const user = graphNodes.find((node): node is UserNode => node.type === "user")
+  const goal = graphNodes.find((node): node is GoalNode => node.type === "goal")
+  const classes = graphNodes.filter((node): node is ClassNode => node.type === "class")
+  const experiences = graphNodes.filter((node): node is ExperienceNode => node.type === "experience")
+  const terms = [...classes, ...experiences]
+    .map((node) => node.data.term)
+    .filter((term) => term.trim().length > 0)
+  const jobTitle = user?.data.jobTitle || goal?.data.jobTitle || ""
+  const industry = user?.data.industry || goal?.data.industry || ""
+
+  return {
+    major: user?.data.major ?? "",
+    track: industry,
+    gpa: parseNumericField(user?.data.gpa),
+    credits_earned: classes.reduce((total, node) => total + parseNumericField(node.data.creditHours), 0),
+    classes: classes.map((node) =>
+      (node.data.subject || node.data.className).replaceAll(" ", "")
+    ),
+    experiences: experiences.map((node) => ({
+      experience_type: node.data.experienceType,
+      experience_name: node.data.experienceName,
+      industry: node.data.industry,
+      term: node.data.term,
+      role_level: node.data.experienceType,
+      outcome: "Completed",
+      is_paid: false,
+    })),
+    job_title: jobTitle,
+    industry,
+    salary: parseNumericField(user?.data.annualSalary || goal?.data.annualSalary),
+    current_term: terms[0] ?? "",
+    entry_term: "Fall 2023",
+    entry_type: "First-Time Freshman",
+    work_hours: experiences.reduce((total, node) => total + parseNumericField(node.data.hoursPerWeek), 0),
+    campus_id: "",
+    width: 3,
+    depth: 3,
+  }
+}
+
+async function fetchPlan(signal: AbortSignal): Promise<PlanRecommendation[]> {
+  const payload = buildPlanPayloadFromStoredGraph()
+  console.log("plan payload", payload)
+
+  const response = await fetch(PLAN_API_URL, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`)
+  }
+
+  const data: unknown = await response.json()
+  console.log(data)
+  return parsePlanRecommendations(data)
 }
 
 function ExperienceNodeCard({ data }: NodeProps<ExperienceNode>) {
@@ -405,26 +617,61 @@ function ExperienceNodeCard({ data }: NodeProps<ExperienceNode>) {
   )
 }
 
-function GoalNodeCard({ data }: NodeProps<GoalNode>) {
+function UserNodeCard({ data }: NodeProps<UserNode>) {
+  const { user } = useUser()
+  const displayName = user?.fullName || user?.username || data.name
+
   function stopNodePointer(event: React.PointerEvent) {
     event.stopPropagation()
   }
 
+  const profileName = data.name.trim() && data.name !== "Your name"
+    ? data.name
+    : displayName
+  const salaryLabel = `$${Number(data.annualSalary || 0).toLocaleString()} / year`
+
   return (
-    <Card size="sm" className="relative min-w-64 overflow-visible border-0 py-0 shadow-sm ring-border">
-      <Handle className="z-10" style={{ left: "-1px", width: "7px", height: "7px" }} type="target" position={Position.Left} />
-      <Handle className="z-10" style={{ right: "-1px", width: "7px", height: "7px" }} type="source" position={Position.Right} />
-      <CardHeader className="px-2.5 py-2.5">
-        <div className="flex items-center gap-1.5">
-          <Badge className="text-[10px]">Goal</Badge>
-          <div className="ml-auto flex items-center gap-1">
-            <Button aria-label="Edit goal" className="nodrag size-6 rounded-md p-0" onClick={(event) => { event.stopPropagation(); data.onEdit?.() }} onPointerDown={stopNodePointer} size="icon-xs" title="Edit goal" variant="secondary">
-              <Pencil />
-            </Button>
+    <Card size="sm" className="relative w-80 overflow-visible border-0 py-0 shadow-md ring-primary/20">
+      <Handle className="z-10" style={{ left: "-1px", width: "8px", height: "8px" }} type="target" position={Position.Left} />
+      <Handle className="z-10" style={{ right: "-1px", width: "8px", height: "8px" }} type="source" position={Position.Right} />
+      <Button
+        aria-label="Edit profile and goal"
+        className="nodrag absolute top-3 right-3 z-10 size-7 rounded-md p-0"
+        onClick={(event) => { event.stopPropagation(); data.onEdit?.() }}
+        onPointerDown={stopNodePointer}
+        size="icon-xs"
+        title="Edit profile and goal"
+        variant="secondary"
+      >
+        <Pencil />
+      </Button>
+      <CardHeader className="gap-4 px-4 pt-4 pb-3">
+        <div className="flex items-center gap-3 pr-9">
+          <div
+            aria-label={`${profileName} profile`}
+            className="size-14 shrink-0 rounded-full object-cover ring-2 ring-primary/15 ring-offset-2 ring-offset-background"
+            role="img"
+            style={{ backgroundImage: `url(${user?.imageUrl || data.profileImageUrl})`, backgroundPosition: "center", backgroundSize: "cover" }}
+          />
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">You</p>
+            <CardTitle className="truncate text-base">{profileName}</CardTitle>
+            <CardDescription className="truncate text-xs">
+              {data.major}
+              {data.gpa ? ` · ${data.gpa} GPA` : ""}
+            </CardDescription>
           </div>
         </div>
-        <CardTitle className="truncate text-sm">{data.jobTitle}</CardTitle>
-        <CardDescription className="truncate text-xs">{data.industry} · ${Number(data.annualSalary || 0).toLocaleString()} / year</CardDescription>
+        <div className="rounded-xl bg-muted/70 px-3 py-3">
+          <div className="flex items-center gap-1.5 text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
+            <Target className="size-3" />
+            Goal
+          </div>
+          <CardTitle className="mt-1.5 truncate text-sm">{data.jobTitle || "Add a goal"}</CardTitle>
+          <CardDescription className="truncate text-xs">
+            {data.industry || "Industry"} · {salaryLabel}
+          </CardDescription>
+        </div>
       </CardHeader>
     </Card>
   )
@@ -459,122 +706,40 @@ function ClassNodeCard({ data }: NodeProps<ClassNode>) {
   )
 }
 
-function UserNodeCard({ data }: NodeProps<UserNode>) {
-  const { user } = useUser()
-  const displayName = user?.fullName || user?.username || data.name
-
+function SuggestionNodeCard({ data }: NodeProps<SuggestionNode>) {
   function stopNodePointer(event: React.PointerEvent) {
     event.stopPropagation()
   }
 
+  const label = data.kind === "class" ? "Future class" : "Future experience"
+
   return (
-    <Card size="sm" className="relative min-w-64 overflow-visible border-0 py-0 shadow-sm ring-border">
+    <Card size="sm" className="relative min-w-64 overflow-visible border-dashed py-0 shadow-sm ring-border">
       <Handle className="z-10" style={{ left: "-1px", width: "7px", height: "7px" }} type="target" position={Position.Left} />
       <Handle className="z-10" style={{ right: "-1px", width: "7px", height: "7px" }} type="source" position={Position.Right} />
-      <CardHeader className="gap-3 px-3 py-3">
-        <div className="flex items-center gap-3">
-          <div
-            aria-label={`${displayName} profile`}
-            className="size-12 shrink-0 rounded-full object-cover ring-2 ring-background"
-            role="img"
-            style={{ backgroundImage: `url(${user?.imageUrl || data.profileImageUrl})`, backgroundPosition: "center", backgroundSize: "cover" }}
-          />
-          <div className="min-w-0">
-            <CardTitle className="truncate text-sm">{displayName}</CardTitle>
-            <CardDescription className="truncate text-xs">{data.major}</CardDescription>
+      <CardHeader className="px-2.5 py-2.5">
+        <div className="flex items-center gap-1.5">
+          <Badge className="text-[10px]">{label}</Badge>
+          {data.targetTerm ? <Badge variant="secondary" className="text-[10px]">{data.targetTerm}</Badge> : null}
+          <div className="ml-auto flex items-center gap-1">
+            <Button aria-label={`About ${label}`} className="nodrag size-6 rounded-md p-0" onClick={(event) => { event.stopPropagation(); data.onEdit?.() }} onPointerDown={stopNodePointer} size="icon-xs" title={`About ${label}`} variant="secondary">
+              <Info />
+            </Button>
+            <Button aria-label={`Delete ${label}`} className="nodrag size-6 rounded-md p-0" onClick={(event) => { event.stopPropagation(); data.onDelete?.() }} onPointerDown={stopNodePointer} size="icon-xs" title={`Delete ${label}`} variant="secondary">
+              <Trash2 />
+            </Button>
           </div>
         </div>
-        <Button className="nodrag w-full" onClick={(event) => {
-          interface Experience {
-  experience_type: string;
-  experience_name: string;
-  industry: string;
-  term: string;
-  role_level: string;
-  outcome: string;
-  is_paid: boolean;
-}
-
-interface PlanPayload {
-  major: string;
-  track: string;
-  gpa: number;
-  credits_earned: number;
-  classes: string[];
-  experiences: Experience[];
-  job_title: string;
-  industry: string;
-  salary: number;
-  current_term: string;
-  entry_term: string;
-  entry_type: string;
-  work_hours: number;
-  campus_id: string;
-  width: number;
-  depth: number;
-}
-
-const payload: PlanPayload = {
-  major: "Computer Science",
-  track: "Cybersecurity",
-  gpa: 3.1,
-  credits_earned: 68,
-  classes: ["CMSC201", "CMSC202", "CMSC203", "CMSC341", "MATH151"],
-  experiences: [
-    {
-      experience_type: "Internship",
-      experience_name: "ML Engineer",
-      industry: "Consulting",
-      term: "1",
-      role_level: "Intern",
-      outcome: "Completed",
-      is_paid: false
-    }
-  ],
-  job_title: "senior cybersecurity analyst",
-  industry: "Financial Services",
-  salary: 115000,
-  current_term: "Fall 2026",
-  entry_term: "Fall 2023",
-  entry_type: "First-Time Freshman",
-  work_hours: 0,
-  campus_id: "123456",
-  width: 3,
-  depth: 3
-};
-
-async function fetchPlan(): Promise<void> {
-  try {
-    const response = await fetch('https://nr0cfvl5-8000.use.devtunnels.ms/plan', {
-      method: 'POST',
-      headers: {
-        'Accept': '*/*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const data: unknown = await response.json();
-    console.log(data);
-  } catch (error) {
-    console.error('Error:', error);
-  }
-}
-
-fetchPlan();
-        }} onPointerDown={stopNodePointer} size="sm">
-          Generate Suggestions
-        </Button>
+        <CardTitle className="truncate text-sm">{data.position}</CardTitle>
+        <CardDescription className="truncate text-xs">
+          {data.actionType} · {formatPercent(data.goalAlignment)} closer to goal
+        </CardDescription>
       </CardHeader>
     </Card>
   )
 }
 
-const nodeTypes = { experience: ExperienceNodeCard, goal: GoalNodeCard, class: ClassNodeCard, user: UserNodeCard }
+const nodeTypes = { experience: ExperienceNodeCard, class: ClassNodeCard, user: UserNodeCard, suggestion: SuggestionNodeCard }
 
 export default function GraphPage() {
   const [nodes, setNodes, onNodesChange] = useNodesState<AppNode>(initialNodes)
@@ -586,6 +751,15 @@ export default function GraphPage() {
   const [draft, setDraft] = useState<AppData | null>(null)
   const termParts = draft && "term" in draft ? getTermParts(draft.term) : null
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<AppNode, Edge> | null>(null)
+  const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false)
+  const nodesRef = useRef(nodes)
+  const reactFlowInstanceRef = useRef(reactFlowInstance)
+  const generatingRef = useRef(false)
+  const planAbortRef = useRef<AbortController | null>(null)
+  const generateSuggestionsRef = useRef<() => Promise<void>>(async () => {})
+
+  nodesRef.current = nodes
+  reactFlowInstanceRef.current = reactFlowInstance
 
   useEffect(() => {
     try {
@@ -593,8 +767,9 @@ export default function GraphPage() {
       if (savedGraph) {
         const parsed = JSON.parse(savedGraph) as { nodes?: AppNode[]; edges?: Edge[] }
         if (Array.isArray(parsed.nodes) && Array.isArray(parsed.edges)) {
-          setNodes(parsed.nodes)
-          setEdges(parsed.edges)
+          const merged = mergeGoalIntoUserGraph(parsed.nodes, parsed.edges)
+          setNodes(merged.nodes)
+          setEdges(merged.edges)
         }
       }
     } catch {
@@ -700,7 +875,9 @@ export default function GraphPage() {
           ? { ...node, data: draft as GoalData }
           : node.type === "class"
             ? { ...node, data: draft as ClassData }
-            : { ...node, data: draft as UserData }
+            : node.type === "suggestion"
+              ? { ...node, data: draft as SuggestionData }
+              : { ...node, data: draft as UserData }
     }))
     setEditingNodeId(null)
     setNewNodeId(null)
@@ -764,6 +941,76 @@ export default function GraphPage() {
     openNodeEditor(newNode)
   }, [reactFlowInstance, setEdges, setNodes])
 
+  const generateSuggestions = useCallback(async () => {
+    planAbortRef.current?.abort()
+    const abortController = new AbortController()
+    planAbortRef.current = abortController
+    generatingRef.current = true
+    setIsGeneratingSuggestions(true)
+    const timeoutId = window.setTimeout(() => abortController.abort(), PLAN_FETCH_TIMEOUT_MS)
+
+    try {
+      const recommendations = await fetchPlan(abortController.signal)
+      if (abortController.signal.aborted) return
+      const userNode = nodesRef.current.find((node) => node.type === "user")
+      const origin = {
+        x: (userNode?.position.x ?? 50) + 380,
+        y: (userNode?.position.y ?? 0) - 80,
+      }
+      const built = buildSuggestionGraph(recommendations, origin, "user-1", { current: Date.now() })
+      setNodes((currentNodes) => [
+        ...currentNodes.filter((node) => node.type !== "suggestion"),
+        ...built.nodes,
+      ])
+      setEdges((currentEdges) => [
+        ...currentEdges.filter((edge) => !edge.id.startsWith("suggestion-edge-")),
+        ...built.edges,
+      ])
+      window.setTimeout(() => {
+        void reactFlowInstanceRef.current?.fitView({ padding: 0.2, duration: 400 })
+      }, 50)
+    } catch (error) {
+      if (abortController.signal.aborted) return
+      console.error("Error:", error)
+    } finally {
+      window.clearTimeout(timeoutId)
+      if (planAbortRef.current === abortController) {
+        generatingRef.current = false
+        setIsGeneratingSuggestions(false)
+        planAbortRef.current = null
+      }
+    }
+  }, [setEdges, setNodes])
+
+  generateSuggestionsRef.current = generateSuggestions
+
+  const handleGenerateSuggestions = useCallback(() => {
+    void generateSuggestionsRef.current()
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener("graph:generate-suggestions", handleGenerateSuggestions)
+    return () => window.removeEventListener("graph:generate-suggestions", handleGenerateSuggestions)
+  }, [handleGenerateSuggestions])
+
+  useEffect(() => {
+    function publishGenerating() {
+      window.dispatchEvent(new CustomEvent("graph:generating-suggestions", {
+        detail: { generating: isGeneratingSuggestions },
+      }))
+    }
+
+    publishGenerating()
+    window.addEventListener("graph:request-generating", publishGenerating)
+    return () => window.removeEventListener("graph:request-generating", publishGenerating)
+  }, [isGeneratingSuggestions])
+
+  useEffect(() => {
+    return () => {
+      planAbortRef.current?.abort()
+    }
+  }, [])
+
   useEffect(() => {
     function handleCreateNode(event: Event) {
       const type = (event as CustomEvent<{ type: "experience" | "class" }>).detail.type
@@ -782,6 +1029,9 @@ export default function GraphPage() {
       setNewNodeId(null)
       setEditingNodeId(null)
       setDraft(null)
+      setIsGeneratingSuggestions(false)
+      generatingRef.current = false
+      planAbortRef.current?.abort()
     }
 
     window.addEventListener("graph:reset", resetGraph)
@@ -793,8 +1043,9 @@ export default function GraphPage() {
       detail: {
         nodes: nodes.flatMap<ExplorerNode>((node) => {
           if (node.type === "experience") return [{ id: node.id, kind: "experience", name: node.data.experienceName }]
-          if (node.type === "goal") return [{ id: node.id, kind: "goal", name: node.data.jobTitle }]
+          if (node.type === "user") return [{ id: node.id, kind: "profile", name: node.data.jobTitle || "You" }]
           if (node.type === "class") return [{ id: node.id, kind: "class", name: node.data.className }]
+          if (node.type === "suggestion") return [{ id: node.id, kind: "suggestion", name: node.data.position }]
           return []
         }),
       },
@@ -808,24 +1059,28 @@ export default function GraphPage() {
         data: { ...node.data, onEdit: () => openNodeEditor(node), onDelete: () => deleteNode(node.id) },
       }
     }
-    if (node.type === "goal") {
-      return {
-        ...node,
-        data: { ...node.data, onEdit: () => openNodeEditor(node) },
-      }
-    }
     if (node.type === "class") {
       return {
         ...node,
         data: { ...node.data, onEdit: () => openNodeEditor(node), onDelete: () => deleteNode(node.id) },
       }
     }
-    return {
-      ...node,
-      data: {
-        ...node.data,
-      },
+    if (node.type === "suggestion") {
+      return {
+        ...node,
+        data: { ...node.data, onEdit: () => openNodeEditor(node), onDelete: () => deleteNode(node.id) },
+      }
     }
+    if (node.type === "user") {
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          onEdit: () => openNodeEditor(node),
+        },
+      }
+    }
+    return node
   })
 
   return (
@@ -857,17 +1112,23 @@ export default function GraphPage() {
         <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingNode?.type === "goal" ? "Edit goal" : editingNode?.type === "class" ? "Edit class" : editingNode?.type === "user" ? "Edit user" : "Edit experience"}
+              {editingNode?.type === "class"
+                ? "Edit class"
+                : editingNode?.type === "user"
+                  ? "Edit profile"
+                  : editingNode?.type === "suggestion"
+                    ? editingNode.data.kind === "class" ? "Future class" : "Future experience"
+                    : "Edit experience"}
             </DialogTitle>
             <DialogDescription>
-              Update the information shown on this node.
+              {editingNode?.type === "suggestion"
+                ? "This suggested next step came from the planner."
+                : "Update the information shown on this node."}
             </DialogDescription>
           </DialogHeader>
-          {editingNode?.type === "user" && draft && "name" in draft ? (
+          {editingNode?.type === "user" && draft && "gpa" in draft ? (
             <div className="grid gap-4">
-              <FormField label="Name">
-                <Input value={draft.name} onChange={(event) => updateDraft("name", event.target.value)} />
-              </FormField>
+              <p className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Profile</p>
               <FormField label="Age">
                 <Input type="number" min="0" value={draft.age} onChange={(event) => updateDraft("age", event.target.value)} />
               </FormField>
@@ -876,6 +1137,16 @@ export default function GraphPage() {
               </FormField>
               <FormField label="GPA">
                 <Input type="number" min="0" step="0.01" value={draft.gpa} onChange={(event) => updateDraft("gpa", event.target.value)} />
+              </FormField>
+              <p className="pt-2 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Goal</p>
+              <FormField label="Industry">
+                <Input value={draft.industry} onChange={(event) => updateDraft("industry", event.target.value)} />
+              </FormField>
+              <FormField label="Job title">
+                <Input value={draft.jobTitle} onChange={(event) => updateDraft("jobTitle", event.target.value)} />
+              </FormField>
+              <FormField label="Annual salary">
+                <Input type="number" min="0" value={draft.annualSalary} onChange={(event) => updateDraft("annualSalary", event.target.value)} />
               </FormField>
             </div>
           ) : editingNode?.type === "class" && draft && "className" in draft ? (
@@ -891,18 +1162,6 @@ export default function GraphPage() {
               </FormField>
               <FormField label="Credit hours">
                 <Input type="number" min="0" value={draft.creditHours} onChange={(event) => updateDraft("creditHours", event.target.value)} />
-              </FormField>
-            </div>
-          ) : editingNode?.type === "goal" && draft && "jobTitle" in draft ? (
-            <div className="grid gap-4">
-              <FormField label="Industry">
-                <Input value={draft.industry} onChange={(event) => updateDraft("industry", event.target.value)} />
-              </FormField>
-              <FormField label="Job title">
-                <Input value={draft.jobTitle} onChange={(event) => updateDraft("jobTitle", event.target.value)} />
-              </FormField>
-              <FormField label="Annual salary">
-                <Input type="number" min="0" value={draft.annualSalary} onChange={(event) => updateDraft("annualSalary", event.target.value)} />
               </FormField>
             </div>
           ) : editingNode?.type === "experience" && draft && "experienceName" in draft ? (
@@ -929,10 +1188,36 @@ export default function GraphPage() {
                 <Input type="number" min="0" value={draft.hoursPerWeek} onChange={(event) => updateDraft("hoursPerWeek", event.target.value)} />
               </FormField>
             </div>
+          ) : editingNode?.type === "suggestion" && draft && draft.type === "suggestion" ? (
+            <div className="grid gap-3 text-sm">
+              <p><span className="font-medium">Type:</span> {draft.actionType}</p>
+              <p><span className="font-medium">Name:</span> {draft.position}</p>
+              {draft.industry ? <p><span className="font-medium">Industry:</span> {draft.industry}</p> : null}
+              {draft.targetTerm ? <p><span className="font-medium">Term:</span> {draft.targetTerm}</p> : null}
+              <p><span className="font-medium">Goal alignment:</span> {formatPercent(draft.goalAlignment)}</p>
+              <p><span className="font-medium">Feasibility:</span> {formatPercent(draft.feasibility)}</p>
+              {draft.skillsAdded.length > 0 ? (
+                <p><span className="font-medium">Skills added:</span> {draft.skillsAdded.join(", ")}</p>
+              ) : null}
+              {draft.why.length > 0 ? (
+                <div className="grid gap-1.5">
+                  <span className="font-medium">Why</span>
+                  <ul className="list-disc pl-5 text-muted-foreground">
+                    {draft.why.map((reason) => <li key={reason}>{reason}</li>)}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
           ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={cancelEditing}>Cancel</Button>
-            <Button onClick={saveNode}>Save changes</Button>
+            {editingNode?.type === "suggestion" ? (
+              <Button onClick={cancelEditing}>Close</Button>
+            ) : (
+              <>
+                <Button variant="outline" onClick={cancelEditing}>Cancel</Button>
+                <Button onClick={saveNode}>Save changes</Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
