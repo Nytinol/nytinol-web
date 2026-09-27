@@ -84,6 +84,36 @@ type AppData = ExperienceData | GoalData | ClassData | UserData
 type ExplorerNode = { id: string; kind: "experience" | "goal" | "class"; name: string }
 
 const GRAPH_STORAGE_KEY = "nytinol-graph-data"
+const PLAN_API_URL = "https://nr0cfvl5-8000.use.devtunnels.ms/plan"
+
+type PlanExperience = {
+  experience_type: string
+  experience_name: string
+  industry: string
+  term: string
+  role_level: string
+  outcome: string
+  is_paid: boolean
+}
+
+type PlanPayload = {
+  major: string
+  track: string
+  gpa: number
+  credits_earned: number
+  classes: string[]
+  experiences: PlanExperience[]
+  job_title: string
+  industry: string
+  salary: number
+  current_term: string
+  entry_term: string
+  entry_type: string
+  work_hours: number
+  campus_id: string
+  width: number
+  depth: number
+}
 
 const seasons = ["Spring", "Summer", "Fall", "Winter"]
 
@@ -96,149 +126,59 @@ const initialNodes: AppNode[] = [
   {
     id: "experience-1",
     type: "experience",
-    position: { x: -1350, y: -200 },
+    position: { x: -1080, y: -200 },
     data: {
       type: "experience",
-      experienceType: "Internship",
-      experienceName: "Circuit Design Intern",
-      organization: "NVIDIA",
-      industry: "IC Design",
-      term: "Fall 2026",
-      termsParticipated: "1",
+      experienceType: "Experience",
+      experienceName: "Undergraduate teaching assistant",
+      organization: "Computer Science Department",
+      industry: "Software Engineering",
+      term: "Fall 2025",
+      termsParticipated: "2",
       hoursPerWeek: "10",
     },
   },
   {
     id: "experience-2",
     type: "experience",
-    position: { x: -1080, y: -200 },
+    position: { x: -810, y: -200 },
     data: {
       type: "experience",
-      experienceType: "Experience",
-      experienceName: "Software engineering intern",
-      organization: "Civic technology lab",
-      industry: "Software Engineering",
-      term: "Fall 2026",
+      experienceType: "Research",
+      experienceName: "Undergraduate research assistant",
+      organization: "Systems and Security Lab",
+      industry: "Computer Systems",
+      term: "Spring 2026",
       termsParticipated: "1",
-      hoursPerWeek: "10",
+      hoursPerWeek: "8",
     },
   },
   {
     id: "experience-3",
     type: "experience",
-    position: { x: -810, y: -200 },
+    position: { x: -540, y: -200 },
     data: {
       type: "experience",
-      experienceType: "Experience",
-      experienceName: "Web application developer",
-      organization: "Campus services team",
-      industry: "Information Systems",
-      term: "Spring 2027",
+      experienceType: "Internship",
+      experienceName: "Software engineering intern",
+      organization: "Capital One",
+      industry: "Software Engineering",
+      term: "Summer 2026",
       termsParticipated: "1",
-      hoursPerWeek: "12",
+      hoursPerWeek: "40",
     },
   },
   {
     id: "experience-4",
     type: "experience",
-    position: { x: -540, y: -200 },
-    data: {
-      type: "experience",
-      experienceType: "Research",
-      experienceName: "Data engineering assistant",
-      organization: "Institutional research office",
-      industry: "Data Engineering",
-      term: "Fall 2027",
-      termsParticipated: "1",
-      hoursPerWeek: "8",
-    },
-  },
-  {
-    id: "experience-5",
-    type: "experience",
     position: { x: -270, y: -200 },
     data: {
       type: "experience",
-      experienceType: "Internship",
-      experienceName: "Cybersecurity analyst intern",
-      organization: "Regional security operations center",
-      industry: "Cybersecurity",
-      term: "Summer 2027",
-      termsParticipated: "1",
-      hoursPerWeek: "20",
-    },
-  },
-  {
-    id: "experience-6",
-    type: "experience",
-    position: { x: -1350, y: -100 },
-    data: {
-      type: "experience",
       experienceType: "Project",
-      experienceName: "Cloud systems automation fellow",
-      organization: "Research computing group",
-      industry: "Cloud Infrastructure",
-      term: "Fall 2027",
-      termsParticipated: "1",
-      hoursPerWeek: "10",
-    },
-  },
-  {
-    id: "experience-7",
-    type: "experience",
-    position: { x: -1080, y: -100 },
-    data: {
-      type: "experience",
-      experienceType: "Experience",
-      experienceName: "Technology product apprentice",
-      organization: "Student innovation studio",
-      industry: "Product Management",
-      term: "Spring 2027",
-      termsParticipated: "1",
-      hoursPerWeek: "8",
-    },
-  },
-  {
-    id: "experience-8",
-    type: "experience",
-    position: { x: -810, y: -100 },
-    data: {
-      type: "experience",
-      experienceType: "Research",
-      experienceName: "Systems design research assistant",
-      organization: "Digital services research lab",
-      industry: "Systems Analysis",
-      term: "Fall 2027",
-      termsParticipated: "1",
-      hoursPerWeek: "6",
-    },
-  },
-  {
-    id: "experience-9",
-    type: "experience",
-    position: { x: -540, y: -100 },
-    data: {
-      type: "experience",
-      experienceType: "Project",
-      experienceName: "Healthcare interoperability project",
-      organization: "Community health network",
-      industry: "Health Information Systems",
-      term: "Spring 2028",
-      termsParticipated: "1",
-      hoursPerWeek: "10",
-    },
-  },
-  {
-    id: "experience-10",
-    type: "experience",
-    position: { x: -270, y: -100 },
-    data: {
-      type: "experience",
-      experienceType: "Experience",
-      experienceName: "Open-source quality contributor",
-      organization: "Open software foundation",
-      industry: "Software Quality",
-      term: "Summer 2027",
+      experienceName: "ACM club web platform",
+      organization: "Association for Computing Machinery",
+      industry: "Web Development",
+      term: "Spring 2026",
       termsParticipated: "1",
       hoursPerWeek: "6",
     },
@@ -246,60 +186,84 @@ const initialNodes: AppNode[] = [
   {
     id: "class-1",
     type: "class",
-    position: { x: -1080, y: 100 },
+    position: { x: -1350, y: 100 },
     data: {
       type: "class",
-      className: "Foundations of Computer Science I",
+      className: "Computer Science I",
       subject: "CMSC 201",
-      term: "Fall 2026",
+      term: "Fall 2024",
       creditHours: "4",
     },
   },
   {
     id: "class-2",
     type: "class",
-    position: { x: -810, y: 100 },
+    position: { x: -1080, y: 100 },
     data: {
       type: "class",
-      className: "Foundations of Computer Science II",
+      className: "Computer Science II",
       subject: "CMSC 202",
-      term: "Spring 2027",
+      term: "Spring 2025",
       creditHours: "4",
     },
   },
   {
     id: "class-3",
     type: "class",
-    position: { x: -540, y: 100 },
+    position: { x: -810, y: 100 },
     data: {
       type: "class",
-      className: "Data Structures",
-      subject: "CMSC 341",
-      term: "Fall 2027",
-      creditHours: "4",
+      className: "Discrete Structures",
+      subject: "CMSC 203",
+      term: "Spring 2025",
+      creditHours: "3",
     },
   },
   {
     id: "class-4",
     type: "class",
-    position: { x: -270, y: 100 },
+    position: { x: -540, y: 100 },
     data: {
       type: "class",
-      className: "Web Application Architecture",
-      subject: "CMSC 426",
-      term: "Spring 2028",
+      className: "Computer Organization and Assembly Language",
+      subject: "CMSC 313",
+      term: "Fall 2025",
       creditHours: "3",
     },
   },
   {
     id: "class-5",
     type: "class",
-    position: { x: -1080-270, y: 100 },
+    position: { x: -270, y: 100 },
     data: {
       type: "class",
-      className: "Database Management Systems",
-      subject: "CMSC 461",
-      term: "Spring 2028",
+      className: "Data Structures",
+      subject: "CMSC 341",
+      term: "Fall 2025",
+      creditHours: "3",
+    },
+  },
+  {
+    id: "class-6",
+    type: "class",
+    position: { x: -1350, y: 240 },
+    data: {
+      type: "class",
+      className: "Principles of Programming Languages",
+      subject: "CMSC 331",
+      term: "Spring 2026",
+      creditHours: "3",
+    },
+  },
+  {
+    id: "class-7",
+    type: "class",
+    position: { x: -1080, y: 240 },
+    data: {
+      type: "class",
+      className: "Computer Architecture",
+      subject: "CMSC 411",
+      term: "Spring 2026",
       creditHours: "3",
     },
   },
@@ -310,9 +274,9 @@ const initialNodes: AppNode[] = [
     position: { x: -270, y: 0 },
     data: {
       type: "goal",
-      industry: "Technology",
-      jobTitle: "Product designer",
-      annualSalary: "95000",
+      industry: "Software Engineering",
+      jobTitle: "Software engineer",
+      annualSalary: "120000",
     },
   },
   {
@@ -326,7 +290,7 @@ const initialNodes: AppNode[] = [
       name: "Your name",
       age: "20",
       major: "Computer Science",
-      gpa: "3.8",
+      gpa: "3.6",
     },
   },
 ];
@@ -352,6 +316,85 @@ const initialEdges: Edge[] = [
 
 function cloneGraphData<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
+}
+
+function parseNumericField(value: string | undefined, fallback = 0) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function buildPlanPayloadFromStoredGraph(): PlanPayload {
+  let graphNodes = initialNodes
+
+  try {
+    const storedGraph = localStorage.getItem(GRAPH_STORAGE_KEY)
+    if (storedGraph) {
+      const parsed = JSON.parse(storedGraph) as { nodes?: AppNode[] }
+      if (Array.isArray(parsed.nodes)) {
+        graphNodes = parsed.nodes
+      }
+    }
+  } catch {
+    graphNodes = initialNodes
+  }
+
+  const user = graphNodes.find((node): node is UserNode => node.type === "user")
+  const goal = graphNodes.find((node): node is GoalNode => node.type === "goal")
+  const classes = graphNodes.filter((node): node is ClassNode => node.type === "class")
+  const experiences = graphNodes.filter((node): node is ExperienceNode => node.type === "experience")
+  const terms = [...classes, ...experiences]
+    .map((node) => node.data.term)
+    .filter((term) => term.trim().length > 0)
+
+  return {
+    major: user?.data.major ?? "",
+    track: goal?.data.industry ?? "",
+    gpa: parseNumericField(user?.data.gpa),
+    credits_earned: classes.reduce((total, node) => total + parseNumericField(node.data.creditHours), 0),
+    classes: classes.map((node) =>
+      (node.data.subject || node.data.className).replaceAll(" ", "")
+    ),
+    experiences: experiences.map((node) => ({
+      experience_type: node.data.experienceType,
+      experience_name: node.data.experienceName,
+      industry: node.data.industry,
+      term: node.data.term,
+      role_level: node.data.experienceType,
+      outcome: "Completed",
+      is_paid: false,
+    })),
+    job_title: goal?.data.jobTitle ?? "",
+    industry: goal?.data.industry ?? "",
+    salary: parseNumericField(goal?.data.annualSalary),
+    current_term: terms[0] ?? "",
+    entry_term: "Fall 2023",
+    entry_type: "First-Time Freshman",
+    work_hours: experiences.reduce((total, node) => total + parseNumericField(node.data.hoursPerWeek), 0),
+    campus_id: "",
+    width: 3,
+    depth: 3,
+  }
+}
+
+async function fetchPlan(): Promise<void> {
+  const payload = buildPlanPayloadFromStoredGraph()
+  console.log("plan payload", payload)
+
+  const response = await fetch(PLAN_API_URL, {
+    method: "POST",
+    headers: {
+      Accept: "*/*",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! Status: ${response.status}`)
+  }
+
+  const data: unknown = await response.json()
+  console.log(data)
 }
 
 function ExperienceNodeCard({ data }: NodeProps<ExperienceNode>) {
@@ -485,87 +528,10 @@ function UserNodeCard({ data }: NodeProps<UserNode>) {
           </div>
         </div>
         <Button className="nodrag w-full" onClick={(event) => {
-          interface Experience {
-  experience_type: string;
-  experience_name: string;
-  industry: string;
-  term: string;
-  role_level: string;
-  outcome: string;
-  is_paid: boolean;
-}
-
-interface PlanPayload {
-  major: string;
-  track: string;
-  gpa: number;
-  credits_earned: number;
-  classes: string[];
-  experiences: Experience[];
-  job_title: string;
-  industry: string;
-  salary: number;
-  current_term: string;
-  entry_term: string;
-  entry_type: string;
-  work_hours: number;
-  campus_id: string;
-  width: number;
-  depth: number;
-}
-
-const payload: PlanPayload = {
-  major: "Computer Science",
-  track: "Cybersecurity",
-  gpa: 3.1,
-  credits_earned: 68,
-  classes: ["CMSC201", "CMSC202", "CMSC203", "CMSC341", "MATH151"],
-  experiences: [
-    {
-      experience_type: "Internship",
-      experience_name: "ML Engineer",
-      industry: "Consulting",
-      term: "1",
-      role_level: "Intern",
-      outcome: "Completed",
-      is_paid: false
-    }
-  ],
-  job_title: "senior cybersecurity analyst",
-  industry: "Financial Services",
-  salary: 115000,
-  current_term: "Fall 2026",
-  entry_term: "Fall 2023",
-  entry_type: "First-Time Freshman",
-  work_hours: 0,
-  campus_id: "123456",
-  width: 3,
-  depth: 3
-};
-
-async function fetchPlan(): Promise<void> {
-  try {
-    const response = await fetch('https://nr0cfvl5-8000.use.devtunnels.ms/plan', {
-      method: 'POST',
-      headers: {
-        'Accept': '*/*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
-    }
-
-    const data: unknown = await response.json();
-    console.log(data);
-  } catch (error) {
-    console.error('Error:', error);
-  }
-}
-
-fetchPlan();
+          event.stopPropagation()
+          void fetchPlan().catch((error: unknown) => {
+            console.error("Error:", error)
+          })
         }} onPointerDown={stopNodePointer} size="sm">
           Generate Suggestions
         </Button>
