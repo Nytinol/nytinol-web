@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { GraphExplorer } from "@/components/graph-explorer"
+import Link from "next/link"
 
 export function AppSidebar() {
   const { openUserProfile, signOut } = useClerk()
@@ -48,10 +49,12 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
-                N
-              </span>
+            <SidebarMenuButton render={<Link href="/" />} size="lg">
+              <img
+                alt="Nytinol"
+                className="size-8 shrink-0 rounded-lg object-contain"
+                src="/favicon.ico"
+              />
               <span className="font-semibold group-data-[collapsible=icon]:hidden">
                 Nytinol
               </span>
