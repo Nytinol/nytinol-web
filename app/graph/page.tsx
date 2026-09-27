@@ -2,7 +2,7 @@
 
 import { ChevronDown, Info, Pencil, Target, Trash2 } from "lucide-react"
 import { useUser } from "@clerk/nextjs"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react"
 import {
   addEdge,
   applyEdgeChanges,
@@ -76,6 +76,7 @@ type UserData = {
   jobTitle: string
   industry: string
   annualSalary: string
+  schoolSpend: string
   onEdit?: () => void
 }
 
@@ -92,6 +93,7 @@ type SuggestionData = {
   goalAlignment: number
   why: string[]
   skillsAdded: string[]
+  salary: number | null
   onEdit?: () => void
   onDelete?: () => void
 }
@@ -147,6 +149,7 @@ type PlanRecommendation = {
   goalAlignment: number
   why: string[]
   skillsAdded: string[]
+  salary: number | null
   nextSteps: PlanRecommendation[]
 }
 
@@ -317,6 +320,7 @@ const initialNodes: AppNode[] = [
       jobTitle: "Solution Architect",
       industry: "Information Technology",
       annualSalary: "120000",
+      schoolSpend: "200000",
     },
   },
 ];
@@ -348,6 +352,7 @@ function mergeGoalIntoUserGraph(nodes: AppNode[], edges: Edge[]): { nodes: AppNo
       jobTitle: user.data.jobTitle || goal?.data.jobTitle || "Software engineer",
       industry: user.data.industry || goal?.data.industry || "Software Engineering",
       annualSalary: user.data.annualSalary || goal?.data.annualSalary || "120000",
+      schoolSpend: user.data.schoolSpend || "200000",
     },
   }
 
@@ -383,6 +388,13 @@ function asStringList(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
 }
 
+function parseProjectedSalary(value: unknown) {
+  const band = asRecord(value)
+  if (!band) return null
+  const median = asFiniteNumber(band.median)
+  return median > 0 ? median : null
+}
+
 function parseRecommendations(value: unknown): PlanRecommendation[] {
   if (!Array.isArray(value)) return []
   return value.flatMap((item) => {
@@ -397,6 +409,7 @@ function parseRecommendations(value: unknown): PlanRecommendation[] {
       goalAlignment: asFiniteNumber(rec.goal_alignment),
       why: asStringList(rec.why),
       skillsAdded: asStringList(rec.skills_added),
+      salary: parseProjectedSalary(rec.projected_salary),
       nextSteps: parseRecommendations(rec.next_steps),
     }]
   })
@@ -418,6 +431,25 @@ function formatPercent(value: number) {
   const ratio = value > 1 ? value / 100 : value
   return `${Math.round(ratio * 100)}%`
 }
+
+function formatMoney(value: number) {
+  return `$${Math.round(value).toLocaleString()}`
+}
+
+function formatRoi(ratio: number) {
+  const percent = Math.round(ratio * 100)
+  const sign = percent > 0 ? "+" : ""
+  return `${sign}${percent.toLocaleString()}%`
+}
+
+const CAREER_YEARS = 40
+
+function degreeRoi(salary: number | null | undefined, schoolSpend: number, careerYears: number) {
+  if (salary == null || salary <= 0 || schoolSpend <= 0 || careerYears <= 0) return null
+  return (salary * careerYears - schoolSpend) / schoolSpend
+}
+
+const RoiInputsContext = createContext({ schoolSpend: 0, careerYears: CAREER_YEARS })
 
 const SUGGESTION_COLUMN_GAP = 300
 const SUGGESTION_ROW_GAP = 132
@@ -463,6 +495,7 @@ function buildSuggestionGraph(
         goalAlignment: recommendation.goalAlignment,
         why: recommendation.why,
         skillsAdded: recommendation.skillsAdded,
+        salary: recommendation.salary,
       },
     })
     edges.push({
@@ -628,7 +661,8 @@ function UserNodeCard({ data }: NodeProps<UserNode>) {
   const profileName = data.name.trim() && data.name !== "Your name"
     ? data.name
     : displayName
-  const salaryLabel = `$${Number(data.annualSalary || 0).toLocaleString()} / year`
+  const salaryLabel = `${formatMoney(Number(data.annualSalary || 0))} / year`
+  const schoolSpend = parseNumericField(data.schoolSpend)
 
   return (
     <Card size="sm" className="relative w-80 overflow-visible border-0 py-0 shadow-md ring-primary/20">
@@ -660,6 +694,9 @@ function UserNodeCard({ data }: NodeProps<UserNode>) {
               {data.major}
               {data.gpa ? ` · ${data.gpa} GPA` : ""}
             </CardDescription>
+            {schoolSpend > 0 ? (
+              <p className="truncate text-xs text-muted-foreground">{formatMoney(schoolSpend)} spent on school</p>
+            ) : null}
           </div>
         </div>
         <div className="rounded-xl bg-muted/70 px-3 py-3">
@@ -707,11 +744,15 @@ function ClassNodeCard({ data }: NodeProps<ClassNode>) {
 }
 
 function SuggestionNodeCard({ data }: NodeProps<SuggestionNode>) {
+  const { schoolSpend, careerYears } = useContext(RoiInputsContext)
+  const roi = degreeRoi(data.salary, schoolSpend, careerYears)
+
   function stopNodePointer(event: React.PointerEvent) {
     event.stopPropagation()
   }
 
   const label = data.kind === "class" ? "Future class" : "Future experience"
+  const roiLabel = data.kind === "class" || roi == null ? null : `ROI ${formatRoi(roi)}`
 
   return (
     <Card size="sm" className="relative min-w-64 overflow-visible border-dashed py-0 shadow-sm ring-border">
@@ -732,7 +773,7 @@ function SuggestionNodeCard({ data }: NodeProps<SuggestionNode>) {
         </div>
         <CardTitle className="truncate text-sm">{data.position}</CardTitle>
         <CardDescription className="truncate text-xs">
-          {data.actionType} · {formatPercent(data.goalAlignment)} closer to goal
+          {roiLabel ?? data.actionType} · {formatPercent(data.goalAlignment)} closer to goal
         </CardDescription>
       </CardHeader>
     </Card>
@@ -1083,7 +1124,15 @@ export default function GraphPage() {
     return node
   })
 
+  const profile = nodes.find((node): node is UserNode => node.type === "user")?.data
+  const schoolSpend = parseNumericField(profile?.schoolSpend)
+  const careerYears = CAREER_YEARS
+  const suggestionRoi = editingNode?.type === "suggestion" && draft?.type === "suggestion" && draft.kind !== "class"
+    ? degreeRoi(draft.salary, schoolSpend, careerYears)
+    : null
+
   return (
+    <RoiInputsContext.Provider value={{ schoolSpend, careerYears }}>
     <main className="h-full min-h-0 flex-1 overflow-hidden">
       <ReactFlow
         nodes={nodesWithActions}
@@ -1138,6 +1187,9 @@ export default function GraphPage() {
               <FormField label="GPA">
                 <Input type="number" min="0" step="0.01" value={draft.gpa} onChange={(event) => updateDraft("gpa", event.target.value)} />
               </FormField>
+              <FormField label="Money spent on school">
+                <Input type="number" min="0" value={draft.schoolSpend ?? ""} onChange={(event) => updateDraft("schoolSpend", event.target.value)} />
+              </FormField>
               <p className="pt-2 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">Goal</p>
               <FormField label="Industry">
                 <Input value={draft.industry} onChange={(event) => updateDraft("industry", event.target.value)} />
@@ -1190,12 +1242,19 @@ export default function GraphPage() {
             </div>
           ) : editingNode?.type === "suggestion" && draft && draft.type === "suggestion" ? (
             <div className="grid gap-3 text-sm">
-              <p><span className="font-medium">Type:</span> {draft.actionType}</p>
+              {suggestionRoi != null ? (
+                <p><span className="font-medium">ROI:</span> {formatRoi(suggestionRoi)} over {careerYears} years</p>
+              ) : (
+                <p><span className="font-medium">Type:</span> {draft.actionType}</p>
+              )}
               <p><span className="font-medium">Name:</span> {draft.position}</p>
               {draft.industry ? <p><span className="font-medium">Industry:</span> {draft.industry}</p> : null}
               {draft.targetTerm ? <p><span className="font-medium">Term:</span> {draft.targetTerm}</p> : null}
               <p><span className="font-medium">Goal alignment:</span> {formatPercent(draft.goalAlignment)}</p>
               <p><span className="font-medium">Feasibility:</span> {formatPercent(draft.feasibility)}</p>
+              {draft.kind !== "class" && draft.salary != null && draft.salary > 0 ? (
+                <p><span className="font-medium">Projected salary:</span> {formatMoney(draft.salary)} / year</p>
+              ) : null}
               {draft.skillsAdded.length > 0 ? (
                 <p><span className="font-medium">Skills added:</span> {draft.skillsAdded.join(", ")}</p>
               ) : null}
@@ -1222,6 +1281,7 @@ export default function GraphPage() {
         </DialogContent>
       </Dialog>
     </main>
+    </RoiInputsContext.Provider>
   )
 }
 
