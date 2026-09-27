@@ -1,3 +1,6 @@
+"use client"
+
+import { useUser } from "@clerk/nextjs"
 import { ChevronUp, LogIn, Settings, User } from "lucide-react"
 
 import {
@@ -20,6 +23,10 @@ import {
 import { GraphExplorer } from "@/components/graph-explorer"
 
 export function AppSidebar() {
+  const { user } = useUser()
+  const displayName = user?.fullName || user?.username || "Your account"
+  const initials = displayName.slice(0, 2).toUpperCase()
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -48,12 +55,24 @@ export function AppSidebar() {
               <DropdownMenuTrigger
                 render={
                   <SidebarMenuButton size="lg">
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                      JD
+                    <span
+                      aria-label={`${displayName} profile picture`}
+                      className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary text-sm font-semibold text-primary-foreground"
+                      role="img"
+                    >
+                      {user?.imageUrl ? (
+                        <span
+                          aria-hidden="true"
+                          className="size-full bg-cover bg-center"
+                          style={{ backgroundImage: `url(${user.imageUrl})` }}
+                        />
+                      ) : (
+                        initials
+                      )}
                     </span>
 
                     <span className="flex flex-col items-start text-left group-data-[collapsible=icon]:hidden">
-                      <span className="font-medium">John Doe</span>
+                      <span className="font-medium">{displayName}</span>
                       <span className="text-xs text-muted-foreground">
                         john@example.com
                       </span>
