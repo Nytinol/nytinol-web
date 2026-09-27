@@ -1,7 +1,7 @@
 "use client"
 
-import { useUser } from "@clerk/nextjs"
-import { ChevronUp, LogIn, Settings, User } from "lucide-react"
+import { useClerk, useUser } from "@clerk/nextjs"
+import { ChevronUp, LogIn, User } from "lucide-react"
 
 import {
   Sidebar,
@@ -23,8 +23,10 @@ import {
 import { GraphExplorer } from "@/components/graph-explorer"
 
 export function AppSidebar() {
+  const { openUserProfile, signOut } = useClerk()
   const { user } = useUser()
   const displayName = user?.fullName || user?.username || "Your account"
+  const email = user?.primaryEmailAddress?.emailAddress || ""
   const initials = displayName.slice(0, 2).toUpperCase()
 
   return (
@@ -74,7 +76,7 @@ export function AppSidebar() {
                     <span className="flex flex-col items-start text-left group-data-[collapsible=icon]:hidden">
                       <span className="font-medium">{displayName}</span>
                       <span className="text-xs text-muted-foreground">
-                        john@example.com
+                        {email}
                       </span>
                     </span>
 
@@ -86,17 +88,12 @@ export function AppSidebar() {
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
 
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => openUserProfile()}>
                     <User />
                     Profile
                   </DropdownMenuItem>
 
-                  <DropdownMenuItem>
-                    <Settings />
-                    Settings
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void signOut({ redirectUrl: "/" })}>
                     <LogIn />
                     Log out
                   </DropdownMenuItem>
