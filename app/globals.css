@@ -135,6 +135,54 @@ body {
   }
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+.landing-grid {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 4%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 4%) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 70% 50% at 50% 0%, black, transparent);
+}
+
+.landing-dots {
+  background-image: radial-gradient(oklch(1 0 0 / 7%) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.landing-flow {
+  animation: landing-dash 1.6s linear infinite;
+}
+
+.landing-float {
+  animation: landing-float 6s ease-in-out infinite;
+}
+
+@keyframes landing-dash {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-flow,
+  .landing-float {
+    animation: none;
+  }
+}
+
 .react-flow__controls {
   overflow: hidden;
   border: 1px solid var(--border);
