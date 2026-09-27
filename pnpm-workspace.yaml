@@ -4,3 +4,8 @@ allowBuilds:
   sharp: false
   unrs-resolver: false
   utf-8-validate: set this to true or false
+
+onlyBuiltDependencies:
+  - bufferutil
+  - core-js
+  - utf-8-validate
